@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let keysPressed = {};        // Object to store the state of pressed keys for horizontal movement.
 
     let bellsPoints = 0;
+    let bellsList = [];
 
     // --- DOM Element References ---
     const container = document.getElementById('container');
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetGame = () => {
         // --- Initial Styling ---
         rabbit.style.bottom = `${rabbitStartHeight}%`; // Set the initial vertical position (on the ground).
+        rabbit.style.transform = "translateX(-50%)";
 
         const container = document.getElementById('container')
         const containerChildren = Array.from(container.children).filter(child => child.id !== 'rabbit' && child.id !== 'floor');
@@ -35,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
 
         bellsPoints = 0;
+        bellsList = [];
         floor.style.bottom = "0";
         addBell();
     }
@@ -46,12 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const addBell = (bottom) => {
         const newBell = document.createElement('div');
+        bellsList.push(newBell);
+
         newBell.className = 'bell';
 
         container.appendChild(newBell);
 
         newBell.style.bottom = `${bottom ? bottom : 20}%`;
-        newBell.style.left = `${bottom ? Math.random() * 100 : 50}%`
+        newBell.style.left = `${bottom ? Math.random() * 100 : 50}%`;
+
+        let bellToDelete;
+
+        while(bellsList.length > 10){
+            bellToDelete = bellsList.shift();
+            bellToDelete.remove();
+        }
     }
     
     /**
@@ -98,8 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Handle horizontal movement based on pressed keys.
         if (keysPressed['a'] || keysPressed['ArrowLeft']) {
             currentHorizontalPosition = Math.max(currentHorizontalPosition - horizontalSpeed, 0); // Move left, ensuring it doesn't go beyond 0%.
+            rabbit.style.transform = "translateX(-50%) rotate(-15deg)";
         } else if (keysPressed['d'] || keysPressed['ArrowRight']) {
             currentHorizontalPosition = Math.min(currentHorizontalPosition + horizontalSpeed, 100); // Move right, ensuring it doesn't go beyond 100%.
+            rabbit.style.transform = "translateX(-50%) rotate(15deg)";
+        }else{
+            rabbit.style.transform = "translateX(-50%)";
         }
 
         rabbit.style.left = `${currentHorizontalPosition}%`; // Update the rabbit's horizontal position in the DOM.
@@ -107,12 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Handle collision with a bell.
         if (collidedBell) {
             bellsPoints += 1;
-            addBell(height + Math.random() * 10 + 5);
-            addBell(height + Math.random() * 15 + 5);
-
+            
             collidedBell.remove(); // Remove the collided bell from the DOM.
             cancelAnimationFrame(jumpAnimationId); // Stop the current jump animation frame.
             // Start a new jump animation with the current bottom position as the initial height and an increased jump speed.
+            addBell(90);
+            addBell(120);
             jumpAnimationId = requestAnimationFrame(() => jump(performance.now(), height, jumpSpeed * boostFactor));
         }
         

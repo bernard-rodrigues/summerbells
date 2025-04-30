@@ -1,5 +1,17 @@
 @import url('./reset.css');
 
+@keyframes bounce {
+    0%, 100% {
+        transform: translate(-50%, -25%);
+        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+        transform: translate(-50%, 0);
+        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+}
+
+
 main{
     display: flex;
     justify-content: center;
@@ -32,6 +44,7 @@ main{
     left: 50%;
     transform: translateX(-50%);
     bottom: 20%;
+    animation: bounce 1s infinite ease-out;
 }
 
 #test{
