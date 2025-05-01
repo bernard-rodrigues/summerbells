@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const floor = document.getElementById('floor'); // Reference to the floor element.
     floor.style.bottom = "0";
 
+    const score = document.getElementById('score');
+    
     const bellsScore = document.getElementById('bells-score');
     bellsScore.innerText = "Bells: 0";
 
@@ -83,6 +85,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // Add this function to create the sparkle effect
+    const createSparkleEffect = (x, y) => {
+        // Number of particles to create
+        const particleCount = 20;
+        
+        for (let i = 0; i < particleCount; i++) {
+            // Create a particle element
+            const particle = document.createElement('div');
+            particle.className = 'sparkle-particle';
+            container.appendChild(particle);
+            
+            // Random size between 3px and 8px
+            const size = 3 + Math.random() * 5;
+            
+            // Random color - magical colors
+            const hue = Math.random() * 360;
+            const color = `hsl(${hue}, 100%, 70%)`;
+            
+            // Set initial styles
+            particle.style.position = 'absolute';
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.borderRadius = '50%';
+            particle.style.backgroundColor = color;
+            particle.style.boxShadow = `0 0 ${size}px ${color}, 0 0 ${size * 2}px white`;
+            particle.style.left = `${x}%`;
+            particle.style.bottom = `${y}%`;
+            particle.style.transform = 'translate(-50%, 50%)';
+            particle.style.pointerEvents = 'none';
+            particle.style.zIndex = '10';
+            
+            // Generate random direction
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 0.5 + Math.random() * 1.5;
+            const dirX = Math.cos(angle) * speed;
+            const dirY = Math.sin(angle) * speed;
+            
+            // Animate the particle
+            let opacity = 1;
+            let frameCount = 0;
+            const maxFrames = 30 + Math.random() * 30;
+            
+            const animateParticle = () => {
+                frameCount++;
+                
+                const currentX = parseFloat(particle.style.left);
+                const currentY = parseFloat(particle.style.bottom);
+                
+                particle.style.left = `${currentX + dirX}%`;
+                particle.style.bottom = `${currentY + dirY}%`;
+                
+                // Fade out gradually
+                opacity -= 1 / maxFrames;
+                particle.style.opacity = opacity;
+                
+                // Add a subtle pulse effect
+                const scale = 1 + 0.2 * Math.sin(frameCount * 0.3);
+                particle.style.transform = `translate(-50%, 50%) scale(${scale})`;
+                
+                if (frameCount < maxFrames) {
+                    requestAnimationFrame(animateParticle);
+                } else {
+                    particle.remove();
+                }
+            };
+            
+            requestAnimationFrame(animateParticle);
+        }
+    };
+    
     /**
      * Add a new bell to container
      * @param {number} bottom - Bell height according to container
@@ -154,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const lightness = height < 10000 ? 100 - (height/10000)*100 : 0;
             container.style.backgroundColor = `hsl(200, 100%, ${lightness.toFixed(2)}%)`;
+            score.style.color = `hsl(200, 100%, ${(100 - lightness).toFixed(2)}%)`;
 
             // Iterate through all the 'bell' elements to check for collision with the rabbit.
             for (let i = 0; i < bells.length; i++) {
@@ -182,6 +255,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (collidedBell) {
                 bellsPoints += 1;
                 bellsScore.innerText = `Bells: ${bellsPoints}`;
+
+                // Get the position of the bell for the animation
+                const bellRect = collidedBell.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+
+                // Create magical sparkle animation
+                createSparkleEffect(
+                    (bellRect.left + bellRect.width/2 - containerRect.left) / containerRect.width * 100, 
+                    parseFloat(collidedBell.style.bottom) || 0
+                );
 
                 addBell(80 + Math.random()*20);
                 addBell(100 + Math.random()*20);

@@ -2,13 +2,19 @@
 
 @keyframes bounce {
     0%, 100% {
-        transform: translate(-50%, -25%);
+        transform: translate(-50%, -50%);
         animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
     }
     50% {
         transform: translate(-50%, 0);
         animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
     }
+}
+
+@keyframes twinkle {
+    0% { opacity: 0.7; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.7; transform: scale(0.8); }
 }
 
 *{
@@ -44,6 +50,16 @@ main{
 
 #title h2{
     font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+#title h3{
+    font-size: 1.5rem;
+}
+
+#title p{
+    margin-top: 1rem;
+    font-size: 1.2rem;
 }
 
 #score{
@@ -57,24 +73,24 @@ main{
 #rabbit{
     aspect-ratio: 1 / 1;
     height: 5%;
-    border: solid 1px black;
-    background-color: white;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
+    background-image: url(../assets/images/frog.png);
+    background-size: 100%;
 }
 
 .bell{
     aspect-ratio: 1 / 1;
-    height: 2.5%;
-    border: solid black 1px;
+    height: 3%;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     bottom: 20%;
     animation: bounce 1s infinite ease-out;
-    background-color: white;
+    background-image: url(../assets/images/bell.png);
+    background-size: 100%;
 }
 
 #test{
@@ -84,8 +100,15 @@ main{
 
 #floor{
     height: 2.5%;
-    background-color: black;
+    background-image: linear-gradient(to top, #005500, #009900);
     width: 100%;
     position: absolute;
     z-index: 10;
+}
+  
+.sparkle-particle {
+    position: absolute;
+    pointer-events: none;
+    animation: twinkle 0.5s infinite alternate;
+    transition: all 0.1s ease-out;
 }
