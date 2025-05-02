@@ -1,10 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Constants and Initial Variables ---
-    const fps = 60;                       // Target frames per second for smooth animation
     const rabbitStartHeight = 0;          // Initial vertical position of the rabbit (percentage of container height)
     const rabbitStartLeft = 50;           // Initial horizontal position of the rabbit (percentage of container width)
     const jumpSpeed = 0.15;               // Initial upward speed of the rabbit during a jump (% of container height per millisecond)
-    const horizontalSpeed = 1;            // Speed of the rabbit's horizontal movement (% of container width per frame)
+    const horizontalSpeed = 0.75;            // Speed of the rabbit's horizontal movement (% of container width per frame)
     const gravity = 0.0005;               // Downward acceleration affecting the rabbit during a jump (% of container height per millisecond squared)
     const boostFactor = 2;                // Multiplier applied to the jump speed when a bell collision occurs
     let jumpAnimationId;                  // ID of the requestAnimationFrame used for the jump animation
@@ -169,10 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Adds a new bell to the game
      * @param {number} bottom - Vertical position for the bell (percentage of container height)
-     * @param {number} collidedLeft - Horizontal position of collision (not used but accepted in parameters)
-     * @param {number} collidedBottom - Vertical position of collision (not used but accepted in parameters)
      */
-    const addBell = (bottom, collidedLeft, collidedBottom) => {
+    const addBell = (bottom) => {
         const newBell = document.createElement('div');
         bellsList.push(newBell);                             // Add bell to tracking array
 
@@ -218,130 +215,121 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} initialTime - The timestamp when the jump started (performance.now())
      * @param {number} initialHeight - The initial vertical position at the start of this jump cycle (percentage)
      * @param {number} initialVelocity - The initial upward velocity for this jump cycle (% per millisecond)
-     * @param {number} lastFrameTime - The timestamp of the previous animation frame
-     * @param {number} targetInterval - The target time interval between frames (in milliseconds for ~60fps)
      * @param {number} lastRabbitHeight - The last recorded height of the rabbit
      */
-    const jump = (initialTime, initialHeight = 0, initialVelocity = jumpSpeed, lastFrameTime = 0, targetInterval = 1000 / fps, lastRabbitHeight = initialHeight) => {
+    const jump = (initialTime, initialHeight = 0, initialVelocity = jumpSpeed, lastRabbitHeight = initialHeight) => {
         const currentTime = performance.now();               // Get the current timestamp
-        const elapsedSinceLastFrame = currentTime - lastFrameTime;
+    
+        const t = currentTime - initialTime;             // Calculate elapsed time since jump started
+        // Calculate current height using physics formula for vertical motion under gravity
+        const height = initialHeight + initialVelocity * t - 0.5 * (gravity * Math.pow(t, 2)); 
+        
+        // Update maximum height score if current height is greater
+        maxHeightScore = height > maxHeightScore ? height : maxHeightScore;
+        heightScore.innerText = `Height: ${maxHeightScore.toFixed(2)}`;
+        
+        // Fade out title as player jumps higher
+        title.style.opacity = height < 100 ? 1 - height/100 : 0;
+        title.style.top = height < 100 ? `${30 - 15*(height/100)}%` : "0";
 
-        // Only update game state at target frame rate
-        if (elapsedSinceLastFrame >= targetInterval) {
-            const t = currentTime - initialTime;             // Calculate elapsed time since jump started
-            // Calculate current height using physics formula for vertical motion under gravity
-            const height = initialHeight + initialVelocity * t - 0.5 * (gravity * Math.pow(t, 2)); 
+        const bells = document.getElementsByClassName('bell');  // Get all bell elements
+        let collidedBell = null;                         // Track collided bell (if any)
+
+        // Change background color based on height (darker as you go higher)
+        const lightness = height < 10000 ? 100 - (height/10000)*100 : 0;
+        container.style.backgroundColor = `hsl(200, 100%, ${lightness.toFixed(2)}%)`;
+        score.style.color = `hsl(40, 100%, ${(100 - lightness).toFixed(2)}%)`;  // Invert text color
+
+        // Check for collision with any bell
+        for (let i = 0; i < bells.length; i++) {
+            if (checkCollision(bells[i], rabbit)) {
+                collidedBell = bells[i];                // Store collided bell
+                break;                                  // Exit loop after first collision
+            }
+        }
+
+        // Handle horizontal movement
+        let currentHorizontalPosition = parseFloat(rabbit.style.left);
+
+        // Move left if appropriate keys are pressed
+        if (keysPressed['a'] || keysPressed['ArrowLeft']) {
+            currentHorizontalPosition = Math.max(currentHorizontalPosition - horizontalSpeed, 0);  // Don't go beyond left edge
+            rabbit.style.transform = "translateX(-50%) rotate(-15deg)";  // Tilt rabbit left while moving
+        } 
+        // Move right if appropriate keys are pressed
+        else if (keysPressed['d'] || keysPressed['ArrowRight']) {
+            currentHorizontalPosition = Math.min(currentHorizontalPosition + horizontalSpeed, 100);  // Don't go beyond right edge
+            rabbit.style.transform = "translateX(-50%) rotate(15deg)";   // Tilt rabbit right while moving
+        } 
+        // Reset rotation if no movement keys pressed
+        else {
+            rabbit.style.transform = "translateX(-50%)";
+        }
+
+        rabbit.style.left = `${currentHorizontalPosition}%`;  // Update rabbit's horizontal position
+
+        // Handle collision with a bell
+        if (collidedBell) {
+            bellsPoints += 1;                          // Increment bell counter
+            bellsScore.innerText = `Bells: ${bellsPoints}`;  // Update bell score display
+
+            // Get the position of the bell for the animation
+            const bellRect = collidedBell.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            // Create magical sparkle animation at bell's position
+            createSparkleEffect(
+                (bellRect.left + bellRect.width/2 - containerRect.left) / containerRect.width * 100, 
+                parseFloat(collidedBell.style.bottom) || 0
+            );
+
+            // Add two new bells at higher positions
+            addBell(80 + Math.random()*20);
+            addBell(100 + Math.random()*20);
+
+            collidedBell.remove();                     // Remove the collected bell from the DOM
+            cancelAnimationFrame(jumpAnimationId);     // Stop the current jump animation
+
+            // Start a new jump with boosted velocity from current height
+            jumpAnimationId = requestAnimationFrame(() => jump(performance.now(), height, jumpSpeed * boostFactor));
+            return;  // Exit current frame execution after collision
+        } 
+        // When rabbit reaches certain height, scroll the world instead of moving rabbit higher
+        else if (height >= 60) {
+            const container = document.getElementById('container');
+            const currentContainerChildren = Array.from(container.children).filter(child => child.id !== 'rabbit');
+
+            // Calculate height difference since last frame
+            const heightDifference = height - lastRabbitHeight;
+
+            // Move all elements down by the height difference (camera effect)
+            for (let i = 0; i < currentContainerChildren.length; i++) {
+                const currentBottom = parseFloat(currentContainerChildren[i].style.bottom) || 0;
+                currentContainerChildren[i].style.bottom = `${currentBottom - heightDifference}%`;
+            }
             
-            // Update maximum height score if current height is greater
-            maxHeightScore = height > maxHeightScore ? height : maxHeightScore;
-            heightScore.innerText = `Height: ${maxHeightScore.toFixed(2)}`;
+            // Keep rabbit at fixed height
+            rabbit.style.bottom = '60%';
             
-            // Fade out title as player jumps higher
-            title.style.opacity = height < 100 ? 1 - height/100 : 0;
-            title.style.top = height < 100 ? `${30 - 15*(height/100)}%` : "0";
-
-            const bells = document.getElementsByClassName('bell');  // Get all bell elements
-            let collidedBell = null;                         // Track collided bell (if any)
-
-            // Change background color based on height (darker as you go higher)
-            const lightness = height < 10000 ? 100 - (height/10000)*100 : 0;
-            container.style.backgroundColor = `hsl(200, 100%, ${lightness.toFixed(2)}%)`;
-            score.style.color = `hsl(200, 100%, ${(100 - lightness).toFixed(2)}%)`;  // Invert text color
-
-            // Check for collision with any bell
-            for (let i = 0; i < bells.length; i++) {
-                if (checkCollision(bells[i], rabbit)) {
-                    collidedBell = bells[i];                // Store collided bell
-                    break;                                  // Exit loop after first collision
-                }
-            }
-
-            // Handle horizontal movement
-            let currentHorizontalPosition = parseFloat(rabbit.style.left);
-
-            // Move left if appropriate keys are pressed
-            if (keysPressed['a'] || keysPressed['ArrowLeft']) {
-                currentHorizontalPosition = Math.max(currentHorizontalPosition - horizontalSpeed, 0);  // Don't go beyond left edge
-                rabbit.style.transform = "translateX(-50%) rotate(-15deg)";  // Tilt rabbit left while moving
-            } 
-            // Move right if appropriate keys are pressed
-            else if (keysPressed['d'] || keysPressed['ArrowRight']) {
-                currentHorizontalPosition = Math.min(currentHorizontalPosition + horizontalSpeed, 100);  // Don't go beyond right edge
-                rabbit.style.transform = "translateX(-50%) rotate(15deg)";   // Tilt rabbit right while moving
-            } 
-            // Reset rotation if no movement keys pressed
-            else {
-                rabbit.style.transform = "translateX(-50%)";
-            }
-
-            rabbit.style.left = `${currentHorizontalPosition}%`;  // Update rabbit's horizontal position
-
-            // Handle collision with a bell
-            if (collidedBell) {
-                bellsPoints += 1;                          // Increment bell counter
-                bellsScore.innerText = `Bells: ${bellsPoints}`;  // Update bell score display
-
-                // Get the position of the bell for the animation
-                const bellRect = collidedBell.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-
-                // Create magical sparkle animation at bell's position
-                createSparkleEffect(
-                    (bellRect.left + bellRect.width/2 - containerRect.left) / containerRect.width * 100, 
-                    parseFloat(collidedBell.style.bottom) || 0
-                );
-
-                // Add two new bells at higher positions
-                addBell(80 + Math.random()*20);
-                addBell(100 + Math.random()*20);
-
-                collidedBell.remove();                     // Remove the collected bell from the DOM
-                cancelAnimationFrame(jumpAnimationId);     // Stop the current jump animation
-
-                // Start a new jump with boosted velocity from current height
-                jumpAnimationId = requestAnimationFrame(() => jump(performance.now(), height, jumpSpeed * boostFactor));
-                return;  // Exit current frame execution after collision
-            } 
-            // When rabbit reaches certain height, scroll the world instead of moving rabbit higher
-            else if (height >= 60) {
-                const container = document.getElementById('container');
-                const currentContainerChildren = Array.from(container.children).filter(child => child.id !== 'rabbit');
-
-                // Calculate height difference since last frame
-                const heightDifference = height - lastRabbitHeight;
-
-                // Move all elements down by the height difference (camera effect)
-                for (let i = 0; i < currentContainerChildren.length; i++) {
-                    const currentBottom = parseFloat(currentContainerChildren[i].style.bottom) || 0;
-                    currentContainerChildren[i].style.bottom = `${currentBottom - heightDifference}%`;
-                }
-                
-                // Keep rabbit at fixed height
-                rabbit.style.bottom = '60%';
-                
-                // Continue jump animation with updated lastRabbitHeight
-                jumpAnimationId = requestAnimationFrame(() => jump(initialTime, initialHeight, initialVelocity, currentTime, targetInterval, height));
-            }
-            // Continue jump animation while rabbit is above the ground
-            else if (height >= 0) {
-                rabbit.style.bottom = `${height}%`;        // Update rabbit's vertical position
-                floor.style.bottom = "0";                  // Keep floor at ground level
-                
-                // Request next animation frame
-                jumpAnimationId = requestAnimationFrame(() => jump(initialTime, initialHeight, initialVelocity, currentTime, targetInterval, height));
-            }
-            // End jump when rabbit falls to or below ground
-            else {
-                rabbit.style.bottom = `0`;                 // Place rabbit on the ground
-                cancelAnimationFrame(jumpAnimationId);     // Stop the jump animation
-                jumpAnimationId = null;                    // Reset animation ID
-                isJumping = false;                         // Reset jumping flag
-                resetGame();                               // Reset game state
-                return;                                    // End animation loop
-            }
-        } else {
-            // If target interval hasn't elapsed, request next frame without updating game state
-            jumpAnimationId = requestAnimationFrame((newTime) => jump(initialTime, initialHeight, initialVelocity, lastFrameTime, targetInterval, lastRabbitHeight));
+            // Continue jump animation with updated lastRabbitHeight
+            jumpAnimationId = requestAnimationFrame(() => jump(initialTime, initialHeight, initialVelocity, height));
+        }
+        // Continue jump animation while rabbit is above the ground
+        else if (height >= 0) {
+            rabbit.style.bottom = `${height}%`;        // Update rabbit's vertical position
+            floor.style.bottom = "0";                  // Keep floor at ground level
+            
+            // Request next animation frame
+            jumpAnimationId = requestAnimationFrame(() => jump(initialTime, initialHeight, initialVelocity, height));
+        }
+        // End jump when rabbit falls to or below ground
+        else {
+            rabbit.style.bottom = `0`;                 // Place rabbit on the ground
+            cancelAnimationFrame(jumpAnimationId);     // Stop the jump animation
+            jumpAnimationId = null;                    // Reset animation ID
+            isJumping = false;                         // Reset jumping flag
+            resetGame();                               // Reset game state
+            return;                                    // End animation loop
         }
     };
 
