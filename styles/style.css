@@ -45,21 +45,21 @@ main{
 }
 
 #title h1{
-    font-size: 3.5rem;
+    font-size: 6vh;
 }
 
 #title h2{
-    font-size: 2rem;
-    margin-bottom: 1rem;
+    font-size: 5vh;
+    margin-bottom: 2vh;
 }
 
 #title h3{
-    font-size: 1.5rem;
+    font-size: 3vh;
 }
 
 #title p{
-    margin-top: 1rem;
-    font-size: 1.2rem;
+    margin-top: 2vh;
+    font-size: 2.5vh;
 }
 
 #score{
@@ -67,7 +67,8 @@ main{
     top: 0;
     right: 0;
     text-align: right;
-    padding: 1rem;
+    padding: 1.5vh;
+    font-size: 2.5vh;
 }
 
 #rabbit{
